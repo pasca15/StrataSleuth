@@ -1,0 +1,7 @@
+{
+  "name": "StrataSleuth: Forensic Property Detective",
+  "description": "An agentic system that simulates living in a property for 10 years to uncover hidden financial and structural nightmares using deep strata document analysis.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
