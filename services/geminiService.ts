@@ -26,8 +26,8 @@ export async function analyzeProperty(
     - Hobbies/Noise: ${lifestyle.hobbies}
     - Usage (e.g. Airbnb): ${lifestyle.usage}
 
-    Perform a 10-year forensic simulation. 
-    Respond strictly in JSON format as defined in your system instructions.
+    Perform a 10-year forensic simulation. Focus on the most significant "nightmares" and financial risks.
+    Respond strictly in JSON format. Do not include any markdown formatting or prefix/suffix.
   `;
 
   try {
@@ -44,7 +44,7 @@ export async function analyzeProperty(
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
-        // No schema needed if we trust the prompt, but we can define one for safety.
+        thinkingConfig: { thinkingBudget: 16000 },
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -61,7 +61,8 @@ export async function analyzeProperty(
                   severity: { type: Type.STRING },
                   description: { type: Type.STRING },
                   resolution: { type: Type.STRING },
-                }
+                },
+                required: ["year", "event", "cost", "severity", "description", "resolution"]
               }
             },
             lifestyleConflicts: {
@@ -72,7 +73,8 @@ export async function analyzeProperty(
                   bylaw: { type: Type.STRING },
                   conflict: { type: Type.STRING },
                   recommendation: { type: Type.STRING },
-                }
+                },
+                required: ["bylaw", "conflict", "recommendation"]
               }
             },
             financialWarGaming: {
@@ -84,7 +86,8 @@ export async function analyzeProperty(
                   expectedCost: { type: Type.NUMBER },
                   fundBalance: { type: Type.NUMBER },
                   levyImpact: { type: Type.NUMBER },
-                }
+                },
+                required: ["year", "expectedCost", "fundBalance", "levyImpact"]
               }
             },
             conclusion: { type: Type.STRING }
@@ -94,10 +97,25 @@ export async function analyzeProperty(
       }
     });
 
-    const resultText = response.text;
+    let resultText = response.text;
     if (!resultText) throw new Error("Empty response from AI");
     
-    return JSON.parse(resultText) as AnalysisResult;
+    // Sometimes the model might wrap response in markdown even with responseMimeType
+    // or include weird control characters if the output is huge.
+    resultText = resultText.trim();
+    if (resultText.startsWith("```json")) {
+      resultText = resultText.replace(/^```json\n?/, "").replace(/\n?```$/, "");
+    } else if (resultText.startsWith("```")) {
+      resultText = resultText.replace(/^```\n?/, "").replace(/\n?```$/, "");
+    }
+
+    try {
+      return JSON.parse(resultText) as AnalysisResult;
+    } catch (parseError) {
+      console.error("Original JSON Text:", resultText);
+      console.error("JSON Parse Error details:", parseError);
+      throw new Error(`Failed to parse analysis report. The data might be too large or malformed. (Position: ${(parseError as any).at || 'unknown'})`);
+    }
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
     throw error;
