@@ -1,8 +1,35 @@
 
-export interface LifestyleProfile {
+export type Persona = 'investor' | 'occupier';
+
+export interface InvestorProfile {
+  expectedRentalYield: string;
+  loanSize: string;
+  airbnb: boolean;
+  interestRate: string;
+  propertyValue: string;
+}
+
+export interface OccupierProfile {
   pets: string;
   hobbies: string;
-  usage: string;
+  balconyDrying: boolean;
+  soundproofingNeeds: string;
+}
+
+export interface LifestyleProfile {
+  persona: Persona;
+  investor?: InvestorProfile;
+  occupier?: OccupierProfile;
+}
+
+export interface Citation {
+  fileName: string;
+  pageNumber: number | string;
+}
+
+export interface BriefingPoint {
+  content: string;
+  source?: Citation;
 }
 
 export interface StrataIssue {
@@ -19,11 +46,19 @@ export interface FinancialProjected {
   expectedCost: number;
   fundBalance: number;
   levyImpact: number;
+  yieldImpact?: number; // For investors
+}
+
+export interface DetectedAmenity {
+  name: string;
+  condition: string;
+  forecastedMaintenanceYear: number;
+  estimatedCost: number | string;
 }
 
 export interface AnalysisResult {
   riskScore: number;
-  redTeamSummary: string;
+  redTeamSummary: BriefingPoint[];
   timeline: StrataIssue[];
   lifestyleConflicts: {
     bylaw: string;
@@ -31,6 +66,12 @@ export interface AnalysisResult {
     recommendation: string;
   }[];
   financialWarGaming: FinancialProjected[];
+  amenities: DetectedAmenity[];
+  recommendedRent?: {
+    weekly: number;
+    annual: number;
+    justification: string;
+  };
   conclusion: string;
 }
 
