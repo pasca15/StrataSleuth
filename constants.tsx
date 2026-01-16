@@ -9,38 +9,36 @@ Review the provided documents (Contract of Sale, Strata Minutes, Financials, Byl
 
 PERSONA-BASED ANALYSIS:
 1. **If Persona is 'Investor'**:
-   - Analyze yield erosion. Calculate how strata levy increases impact the Net Rental Yield.
-   - Forecast cashflow based on loan size and interest rate.
-   - Specifically check bylaws for Short-Term Rental Accommodation (STRA/Airbnb) restrictions.
-   - **Recommended Rent**: Calculate required weekly rent based on yield and value. Sanity check against building condition.
+   - Analyze yield erosion. Calculate how strata levy increases impact Net Rental Yield.
+   - Forecast cashflow based on loan size/interest rate.
+   - **Recommended Rent**: Calculate weekly rent based on yield and market.
 
 2. **If Persona is 'Occupier'**:
-   - Focus on Quality of Life. Analyze bylaws regarding drying clothes on balconies, soundproofing, pets, and noise.
-   - Look for recurring neighbor complaints in minutes.
+   - **Sleeping Habits**: If user is a 'light sleeper', cross-reference minutes for complaints about: common wall noise, elevator machinery, garbage truck collection times, or noisy neighbors.
+   - **Rent vs Buy Forensic**: If there's a mortgage, calculate the "Total Monthly Burn" (Mortgage P&I + Strata + Rates + Maintenance). 
+   - Compare this burn rate to local rental prices. Use the 'googleSearch' tool to find real-time rental comparables for this building or street.
+   - Calculate if renting a similar property for 10 years is financially superior to the owner's projected costs (including special levies).
 
 CORE DIRECTIVES:
 - **The Ghost in the Walls**: Track recurring structural issues.
-- **Amenity Audit**: Identify building amenities (Lifts, Pools, Gyms, etc.) and forecast repair cycles.
-- **Financial War Gaming**: Compare maintenance plans vs Sinking Fund.
-- **SOURCE CITATIONS**: In the "redTeamSummary", every major claim MUST be cited with the file name and page number where it was found in the provided documents.
+- **Amenity Audit**: Identify building amenities and forecast repair cycles.
+- **SOURCE CITATIONS**: Every claim in 'redTeamSummary' MUST be cited with fileName and pageNumber.
 
 OUTPUT RULES:
 - RESPOND WITH VALID JSON ONLY. NO MARKDOWN.
-- ESCAPE ALL DOUBLE QUOTES.
 - LIMIT: Max 10 items for the timeline.
 
 Format:
 {
-  "riskScore": number (0-100),
-  "redTeamSummary": [
-    { "content": "The statement about a risk or finding", "source": { "fileName": "name.pdf", "pageNumber": 5 } }
-  ],
+  "riskScore": number,
+  "redTeamSummary": [{ "content": string, "source": { "fileName": string, "pageNumber": number } }],
   "timeline": [{ "year": number, "event": string, "cost": string, "severity": "low"|"medium"|"high"|"critical", "description": string, "resolution": string }],
   "lifestyleConflicts": [{ "bylaw": string, "conflict": string, "recommendation": string }],
-  "financialWarGaming": [{ "year": number, "expectedCost": number, "fundBalance": number, "levyImpact": number, "yieldImpact": number }],
+  "financialWarGaming": [{ "year": number, "expectedCost": number, "fundBalance": number, "levyImpact": number, "yieldImpact": number, "totalMonthlyOwnershipCost": number }],
   "amenities": [{ "name": string, "condition": string, "forecastedMaintenanceYear": number, "estimatedCost": string }],
   "recommendedRent": { "weekly": number, "annual": number, "justification": string },
-  "conclusion": "final verdict"
+  "rentVsBuy": { "monthlyOwnershipCost": number, "marketRentEquivalent": number, "tenYearTotalDelta": number, "comparablePropertyLink": string, "justification": string },
+  "conclusion": string
 }
 `;
 
@@ -74,5 +72,8 @@ export const ICONS = {
   ),
   Info: () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+  ),
+  Link: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
   ),
 };

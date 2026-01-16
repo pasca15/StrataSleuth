@@ -13,7 +13,6 @@ interface Props {
 const BriefingPointItem: React.FC<{ point: BriefingPoint }> = ({ point }) => {
   return (
     <li className="relative group pl-7 mb-4 last:mb-0 leading-relaxed text-zinc-400">
-      {/* Custom Aesthetic Bullet */}
       <div className="absolute left-1 top-[0.6em] w-1.5 h-1.5 bg-blue-600 rounded-sm rotate-45 group-hover:bg-blue-400 transition-colors" />
       
       <span className={`transition-colors duration-200 ${point.source ? 'cursor-help group-hover:text-zinc-100' : ''}`}>
@@ -32,7 +31,6 @@ const BriefingPointItem: React.FC<{ point: BriefingPoint }> = ({ point }) => {
               Page {point.source.pageNumber}
             </span>
           </div>
-          {/* Tooltip Arrow */}
           <div className="absolute top-full left-6 border-l-[10px] border-r-[10px] border-t-[10px] border-l-transparent border-r-transparent border-t-zinc-800"></div>
         </div>
       )}
@@ -96,6 +94,47 @@ export const AnalysisDashboard: React.FC<Props> = ({ data }) => {
         </div>
       )}
 
+      {/* Rent vs Buy Forensic for Occupiers */}
+      {data.rentVsBuy && (
+        <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl">
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 bg-blue-500/10 text-blue-500 rounded-lg"><ICONS.Home /></div>
+              <h3 className="font-black text-xl text-zinc-200">Rent vs. Buy Forensic</h3>
+            </div>
+            {data.rentVsBuy.comparablePropertyLink && (
+              <a href={data.rentVsBuy.comparablePropertyLink} target="_blank" rel="noopener noreferrer" className="mt-2 md:mt-0 flex items-center space-x-2 text-[10px] text-blue-400 hover:text-blue-300 transition-colors uppercase font-bold tracking-widest">
+                <ICONS.Link /> <span>View Comparable Rental</span>
+              </a>
+            )}
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="p-6 bg-zinc-950 border border-zinc-800 rounded-2xl">
+              <p className="text-[10px] text-zinc-500 font-bold uppercase mb-2">Monthly Owner Burn</p>
+              <p className="text-3xl font-black text-white">${data.rentVsBuy.monthlyOwnershipCost.toLocaleString()}</p>
+              <p className="text-[10px] text-zinc-600 mt-1">Incl. Strata, Rates, Int.</p>
+            </div>
+            <div className="p-6 bg-zinc-950 border border-zinc-800 rounded-2xl">
+              <p className="text-[10px] text-zinc-500 font-bold uppercase mb-2">Market Rent Equiv.</p>
+              <p className="text-3xl font-black text-blue-400">${data.rentVsBuy.marketRentEquivalent.toLocaleString()}</p>
+              <p className="text-[10px] text-zinc-600 mt-1">Found via Local Grounding</p>
+            </div>
+            <div className="p-6 bg-zinc-950 border border-zinc-800 rounded-2xl">
+              <p className="text-[10px] text-zinc-500 font-bold uppercase mb-2">10-Year Delta</p>
+              <p className={`text-3xl font-black ${data.rentVsBuy.tenYearTotalDelta > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                {data.rentVsBuy.tenYearTotalDelta > 0 ? '+' : '-'}${Math.abs(data.rentVsBuy.tenYearTotalDelta).toLocaleString()}
+              </p>
+              <p className="text-[10px] text-zinc-600 mt-1">Cumulative Financial Impact</p>
+            </div>
+          </div>
+          
+          <p className="text-sm text-zinc-400 italic border-l-2 border-zinc-800 pl-4 py-1">
+            {data.rentVsBuy.justification}
+          </p>
+        </div>
+      )}
+
       {/* Financial Section */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl">
@@ -112,6 +151,9 @@ export const AnalysisDashboard: React.FC<Props> = ({ data }) => {
                 <Tooltip contentStyle={{ backgroundColor: '#18181b', borderRadius: '12px', border: '1px solid #27272a' }} />
                 <Area type="monotone" dataKey="fundBalance" stroke="#3b82f6" fill="#3b82f633" name="Sinking Fund" />
                 <Area type="monotone" dataKey="expectedCost" stroke="#ef4444" fill="#ef444411" name="Repair Cost" />
+                {data.financialWarGaming[0]?.totalMonthlyOwnershipCost && (
+                   <Area type="monotone" dataKey="totalMonthlyOwnershipCost" stroke="#10b981" fill="#10b98111" name="Monthly Ownership Burn" />
+                )}
               </AreaChart>
             </ResponsiveContainer>
           </div>

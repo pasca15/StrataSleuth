@@ -15,7 +15,12 @@ const App: React.FC = () => {
       pets: '',
       hobbies: '',
       balconyDrying: false,
-      soundproofingNeeds: ''
+      soundproofingNeeds: '',
+      sleepingHabits: 'Deep sleeper',
+      hasMortgage: false,
+      loanSize: '500000',
+      interestRate: '6.1',
+      propertyValue: '850000'
     },
     investor: {
       expectedRentalYield: '4.5',
@@ -111,11 +116,19 @@ const App: React.FC = () => {
                 </div>
 
                 {persona === 'occupier' ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-left-2 duration-300">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 animate-in fade-in slide-in-from-left-2 duration-300">
                     <div className="space-y-4">
                       <div>
                         <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Pets</label>
                         <input className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-zinc-200 focus:border-blue-500 outline-none" placeholder="e.g. Medium dog, 15kg" value={lifestyle.occupier?.pets} onChange={e => setLifestyle({...lifestyle, occupier: {...lifestyle.occupier!, pets: e.target.value}})} />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Sleeping Habits</label>
+                        <select className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-zinc-200 focus:border-blue-500 outline-none" value={lifestyle.occupier?.sleepingHabits} onChange={e => setLifestyle({...lifestyle, occupier: {...lifestyle.occupier!, sleepingHabits: e.target.value}})}>
+                          <option value="Light Sleeper">Light Sleeper (Sensitive to sound)</option>
+                          <option value="Average Sleeper">Average Sleeper</option>
+                          <option value="Deep Sleeper">Deep Sleeper (Sleeps through anything)</option>
+                        </select>
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Hobbies / Noise</label>
@@ -127,14 +140,35 @@ const App: React.FC = () => {
                         <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Soundproofing Requirements</label>
                         <input className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-zinc-200 focus:border-blue-500 outline-none" placeholder="e.g. Planning to replace carpet with floorboards" value={lifestyle.occupier?.soundproofingNeeds} onChange={e => setLifestyle({...lifestyle, occupier: {...lifestyle.occupier!, soundproofingNeeds: e.target.value}})} />
                       </div>
-                      <div>
-                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Strata Compliance</label>
-                        <div className="flex items-center justify-between p-3.5 bg-zinc-950 border border-zinc-800 rounded-lg">
-                          <label className="text-sm font-medium text-zinc-300">Dry clothes on balcony?</label>
-                          <input type="checkbox" className="w-5 h-5 rounded border-zinc-800 text-blue-600" checked={lifestyle.occupier?.balconyDrying} onChange={e => setLifestyle({...lifestyle, occupier: {...lifestyle.occupier!, balconyDrying: e.target.checked}})} />
-                        </div>
+                      <div className="flex items-center justify-between p-3.5 bg-zinc-950 border border-zinc-800 rounded-lg">
+                        <label className="text-sm font-medium text-zinc-300">Dry clothes on balcony?</label>
+                        <input type="checkbox" className="w-5 h-5 rounded border-zinc-800 text-blue-600" checked={lifestyle.occupier?.balconyDrying} onChange={e => setLifestyle({...lifestyle, occupier: {...lifestyle.occupier!, balconyDrying: e.target.checked}})} />
+                      </div>
+                      <div className="flex items-center justify-between p-3.5 bg-zinc-950 border border-zinc-800 rounded-lg">
+                        <label className="text-sm font-medium text-zinc-300">Is this property mortgaged?</label>
+                        <input type="checkbox" className="w-5 h-5 rounded border-zinc-800 text-blue-600" checked={lifestyle.occupier?.hasMortgage} onChange={e => setLifestyle({...lifestyle, occupier: {...lifestyle.occupier!, hasMortgage: e.target.checked}})} />
                       </div>
                     </div>
+
+                    {lifestyle.occupier?.hasMortgage && (
+                      <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-blue-500/5 border border-blue-500/20 rounded-2xl animate-in zoom-in-95 duration-200">
+                        <div>
+                          <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2 tracking-widest">Property Value</label>
+                          <input type="number" className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-200 outline-none focus:border-blue-500" value={lifestyle.occupier?.propertyValue} onChange={e => setLifestyle({...lifestyle, occupier: {...lifestyle.occupier!, propertyValue: e.target.value}})} />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2 tracking-widest">Loan Size</label>
+                          <input type="number" className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-200 outline-none focus:border-blue-500" value={lifestyle.occupier?.loanSize} onChange={e => setLifestyle({...lifestyle, occupier: {...lifestyle.occupier!, loanSize: e.target.value}})} />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2 tracking-widest">Interest Rate (%)</label>
+                          <input type="number" step="0.1" className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-zinc-200 outline-none focus:border-blue-500" value={lifestyle.occupier?.interestRate} onChange={e => setLifestyle({...lifestyle, occupier: {...lifestyle.occupier!, interestRate: e.target.value}})} />
+                        </div>
+                        <div className="col-span-full pt-2">
+                           <p className="text-[10px] text-zinc-500 italic">Enabling "Rent vs Buy" Forensic Comparison</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 animate-in fade-in slide-in-from-right-2 duration-300">

@@ -34,8 +34,10 @@ export async function analyzeProperty(
       Persona: Owner/Occupier
       Pets: ${lifestyle.occupier.pets}
       Hobbies: ${lifestyle.occupier.hobbies}
+      Sleeping Habits/Sensitivity: ${lifestyle.occupier.sleepingHabits}
       Drying clothes on balcony: ${lifestyle.occupier.balconyDrying}
       Soundproofing needs: ${lifestyle.occupier.soundproofingNeeds}
+      Mortgage Info: ${lifestyle.occupier.hasMortgage ? `Loan $${lifestyle.occupier.loanSize} at ${lifestyle.occupier.interestRate}% for $${lifestyle.occupier.propertyValue} value` : 'No mortgage'}
     `;
   }
 
@@ -43,9 +45,9 @@ export async function analyzeProperty(
     Analyze these documents for a 10-year forensic simulation.
     Profile: ${profileDescription}
 
-    Identify building amenities and repair cycles.
-    If persona is Investor, track "yieldImpact" and "recommendedRent".
-    Provide specific citations (filename, page) for all claims in the redTeamSummary.
+    Use Google Search to find current rental market data for the address or suburb mentioned in these files to calculate a 'rentVsBuy' comparison.
+    If Persona is Occupier, also evaluate how noise/strata issues specifically affect their 'Sleeping Habits'.
+    
     Respond strictly in JSON.
   `;
 
@@ -57,6 +59,7 @@ export async function analyzeProperty(
         systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
         thinkingConfig: { thinkingBudget: 16000 },
+        tools: [{ googleSearch: {} }],
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -116,6 +119,7 @@ export async function analyzeProperty(
                   fundBalance: { type: Type.NUMBER },
                   levyImpact: { type: Type.NUMBER },
                   yieldImpact: { type: Type.NUMBER },
+                  totalMonthlyOwnershipCost: { type: Type.NUMBER },
                 },
                 required: ["year", "expectedCost", "fundBalance", "levyImpact"]
               }
@@ -141,6 +145,17 @@ export async function analyzeProperty(
                 justification: { type: Type.STRING },
               },
               required: ["weekly", "annual", "justification"]
+            },
+            rentVsBuy: {
+              type: Type.OBJECT,
+              properties: {
+                monthlyOwnershipCost: { type: Type.NUMBER },
+                marketRentEquivalent: { type: Type.NUMBER },
+                tenYearTotalDelta: { type: Type.NUMBER },
+                comparablePropertyLink: { type: Type.STRING },
+                justification: { type: Type.STRING },
+              },
+              required: ["monthlyOwnershipCost", "marketRentEquivalent", "tenYearTotalDelta", "justification"]
             },
             conclusion: { type: Type.STRING }
           },

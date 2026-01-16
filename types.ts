@@ -14,6 +14,11 @@ export interface OccupierProfile {
   hobbies: string;
   balconyDrying: boolean;
   soundproofingNeeds: string;
+  sleepingHabits: string;
+  hasMortgage: boolean;
+  loanSize: string;
+  interestRate: string;
+  propertyValue: string;
 }
 
 export interface LifestyleProfile {
@@ -46,7 +51,16 @@ export interface FinancialProjected {
   expectedCost: number;
   fundBalance: number;
   levyImpact: number;
-  yieldImpact?: number; // For investors
+  yieldImpact?: number; 
+  totalMonthlyOwnershipCost?: number; // For Rent vs Buy
+}
+
+export interface RentVsBuyComparison {
+  monthlyOwnershipCost: number;
+  marketRentEquivalent: number;
+  tenYearTotalDelta: number;
+  comparablePropertyLink?: string;
+  justification: string;
 }
 
 export interface DetectedAmenity {
@@ -72,6 +86,7 @@ export interface AnalysisResult {
     annual: number;
     justification: string;
   };
+  rentVsBuy?: RentVsBuyComparison;
   conclusion: string;
 }
 
