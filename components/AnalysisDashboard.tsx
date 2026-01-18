@@ -89,37 +89,44 @@ export const AnalysisDashboard: React.FC<Props> = ({ data }) => {
             )}
           </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="p-6 bg-zinc-950 border border-zinc-800 rounded-2xl">
-              <p className="text-[10px] text-zinc-500 font-bold uppercase mb-2">Current Monthly Burn</p>
-              <p className="text-3xl font-black text-white">${data.rentVsBuy.monthlyOwnershipCost.toLocaleString()}</p>
-              <p className="text-[10px] text-zinc-600 mt-1">Incl. Int, Strata, Rates</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="p-6 bg-zinc-950 border border-zinc-800 rounded-2xl flex flex-col justify-between h-full">
+              <div>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase mb-2">Current Monthly Burn</p>
+                <p className="text-3xl font-black text-white">${data.rentVsBuy.monthlyOwnershipCost.toLocaleString()}</p>
+              </div>
+              <p className="text-[10px] text-zinc-600 mt-2">Incl. Int, Strata, Rates</p>
             </div>
-            <div className="p-6 bg-zinc-950 border border-zinc-800 rounded-2xl">
-              <p className="text-[10px] text-zinc-500 font-bold uppercase mb-2">Market Rent Equivalent</p>
-              <p className="text-3xl font-black text-blue-400">${data.rentVsBuy.marketRentEquivalent.toLocaleString()}</p>
-              <p className="text-[10px] text-zinc-600 mt-1">Found via Grounding</p>
+            <div className="p-6 bg-zinc-950 border border-zinc-800 rounded-2xl flex flex-col justify-between h-full">
+              <div>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase mb-2">Market Rent Equivalent</p>
+                <p className="text-3xl font-black text-blue-400">${data.rentVsBuy.marketRentEquivalent.toLocaleString()}</p>
+              </div>
+              <p className="text-[10px] text-zinc-600 mt-2">Found via Grounding</p>
             </div>
-            <div className="p-6 bg-zinc-950 border border-zinc-800 rounded-2xl">
-              <p className="text-[10px] text-zinc-500 font-bold uppercase mb-2">10-Year Total Impact</p>
-              <p className={`text-3xl font-black ${data.rentVsBuy.tenYearTotalDelta > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
-                {data.rentVsBuy.tenYearTotalDelta > 0 ? '+' : '-'}${Math.abs(data.rentVsBuy.tenYearTotalDelta).toLocaleString()}
-              </p>
-              <p className="text-[10px] text-zinc-600 mt-1">Projected Difference</p>
+            <div className="p-6 bg-zinc-950 border border-zinc-800 rounded-2xl flex flex-col justify-between h-full">
+              <div>
+                <p className="text-[10px] text-zinc-500 font-bold uppercase mb-2">10-Year Total Impact</p>
+                <p className={`text-3xl font-black ${data.rentVsBuy.tenYearTotalDelta > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+                  {data.rentVsBuy.tenYearTotalDelta > 0 ? '+' : '-'}${Math.abs(data.rentVsBuy.tenYearTotalDelta).toLocaleString()}
+                </p>
+              </div>
+              <p className="text-[10px] text-zinc-600 mt-2">Projected Difference</p>
             </div>
-            <div className="md:col-span-4 h-[250px] mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data.rentVsBuy.yearlyProjection}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
-                  <XAxis dataKey="year" stroke="#4b5563" fontSize={12} tickFormatter={v => `Year ${v}`} />
-                  <YAxis stroke="#4b5563" fontSize={12} />
-                  <Tooltip contentStyle={{ backgroundColor: '#18181b', borderRadius: '12px', border: '1px solid #27272a' }} />
-                  <Legend verticalAlign="top" height={36}/>
-                  <Area type="monotone" dataKey="ownershipCost" stroke="#ffffff" fill="#ffffff05" name="Ownership Cost (Yr)" />
-                  <Area type="monotone" dataKey="estimatedRent" stroke="#3b82f6" fill="#3b82f611" name="Rent Equivalent (Yr)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+          </div>
+
+          <div className="w-full h-[250px] mb-8">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data.rentVsBuy.yearlyProjection}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                <XAxis dataKey="year" stroke="#4b5563" fontSize={12} tickFormatter={v => `Year ${v}`} />
+                <YAxis stroke="#4b5563" fontSize={12} />
+                <Tooltip contentStyle={{ backgroundColor: '#18181b', borderRadius: '12px', border: '1px solid #27272a' }} />
+                <Legend verticalAlign="top" height={36}/>
+                <Area type="monotone" dataKey="ownershipCost" stroke="#ffffff" fill="#ffffff05" name="Ownership Cost (Yr)" />
+                <Area type="monotone" dataKey="estimatedRent" stroke="#3b82f6" fill="#3b82f611" name="Rent Equivalent (Yr)" />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
           
           <div className="bg-zinc-950/50 p-6 rounded-2xl border border-zinc-800/50">

@@ -3,6 +3,18 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { AnalysisResult, LifestyleProfile, UploadedFile } from "../types";
 import { SYSTEM_INSTRUCTION } from "../constants";
 
+function cleanJsonString(str: string): string {
+  // Remove markdown code block syntax if present
+  let cleaned = str.replace(/```json/g, "").replace(/```/g, "").trim();
+  // Sometimes the model might include leading/trailing whitespace or text
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start !== -1 && end !== -1) {
+    cleaned = cleaned.substring(start, end + 1);
+  }
+  return cleaned;
+}
+
 export async function analyzeProperty(
   files: UploadedFile[],
   lifestyle: LifestyleProfile
@@ -42,16 +54,15 @@ export async function analyzeProperty(
   }
 
   const prompt = `
-    Analyze these documents for a 10-year forensic simulation.
+    Conduct a 10-year forensic living simulation.
     Profile: ${profileDescription}
 
-    Use Google Search to find current rental market data for the address or suburb mentioned in these files.
-    If Persona is Occupier and they have a mortgage, generate a 10-year "Rent vs Buy" yearly projection. 
-    Compare Total Cost of Ownership (Mortgage interest, Strata, Rates, Maintenance) vs renting a comparable property.
+    Key Objectives:
+    1. Search for real rental market data for the address/suburb found in documents.
+    2. If Occupier + Mortgage: Provide a Rent vs Buy comparison.
+    3. If Occupier + Light Sleeper: Scrutinize minutes for specific nighttime noise issues.
     
-    If Persona is Occupier, also evaluate how noise/strata issues specifically affect their 'Sleeping Habits' (e.g. identify sources of early morning or late night noise in minutes).
-    
-    Respond strictly in JSON.
+    Constraint: Respond strictly in VALID JSON. Be concise.
   `;
 
   try {
@@ -61,7 +72,7 @@ export async function analyzeProperty(
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
-        thinkingConfig: { thinkingBudget: 16000 },
+        thinkingConfig: { thinkingBudget: 8000 },
         tools: [{ googleSearch: {} }],
         responseSchema: {
           type: Type.OBJECT,
@@ -180,7 +191,14 @@ export async function analyzeProperty(
     });
 
     let resultText = response.text || "{}";
-    return JSON.parse(resultText) as AnalysisResult;
+    const cleanedText = cleanJsonString(resultText);
+    
+    try {
+      return JSON.parse(cleanedText) as AnalysisResult;
+    } catch (parseError) {
+      console.error("JSON Parse Error. Raw response content:", cleanedText);
+      throw new Error("The model generated an invalid response. Please try with fewer documents or a simpler profile.");
+    }
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
     throw error;
