@@ -45,8 +45,11 @@ export async function analyzeProperty(
     Analyze these documents for a 10-year forensic simulation.
     Profile: ${profileDescription}
 
-    Use Google Search to find current rental market data for the address or suburb mentioned in these files to calculate a 'rentVsBuy' comparison.
-    If Persona is Occupier, also evaluate how noise/strata issues specifically affect their 'Sleeping Habits'.
+    Use Google Search to find current rental market data for the address or suburb mentioned in these files.
+    If Persona is Occupier and they have a mortgage, generate a 10-year "Rent vs Buy" yearly projection. 
+    Compare Total Cost of Ownership (Mortgage interest, Strata, Rates, Maintenance) vs renting a comparable property.
+    
+    If Persona is Occupier, also evaluate how noise/strata issues specifically affect their 'Sleeping Habits' (e.g. identify sources of early morning or late night noise in minutes).
     
     Respond strictly in JSON.
   `;
@@ -154,8 +157,20 @@ export async function analyzeProperty(
                 tenYearTotalDelta: { type: Type.NUMBER },
                 comparablePropertyLink: { type: Type.STRING },
                 justification: { type: Type.STRING },
+                yearlyProjection: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      year: { type: Type.NUMBER },
+                      ownershipCost: { type: Type.NUMBER },
+                      estimatedRent: { type: Type.NUMBER },
+                    },
+                    required: ["year", "ownershipCost", "estimatedRent"]
+                  }
+                }
               },
-              required: ["monthlyOwnershipCost", "marketRentEquivalent", "tenYearTotalDelta", "justification"]
+              required: ["monthlyOwnershipCost", "marketRentEquivalent", "tenYearTotalDelta", "justification", "yearlyProjection"]
             },
             conclusion: { type: Type.STRING }
           },

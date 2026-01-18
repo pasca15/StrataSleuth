@@ -55,12 +55,19 @@ export interface FinancialProjected {
   totalMonthlyOwnershipCost?: number; // For Rent vs Buy
 }
 
+export interface RentVsBuyYearly {
+  year: number;
+  ownershipCost: number;
+  estimatedRent: number;
+}
+
 export interface RentVsBuyComparison {
   monthlyOwnershipCost: number;
   marketRentEquivalent: number;
   tenYearTotalDelta: number;
   comparablePropertyLink?: string;
   justification: string;
+  yearlyProjection: RentVsBuyYearly[];
 }
 
 export interface DetectedAmenity {
