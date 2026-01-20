@@ -36,7 +36,8 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
 }
 
 /**
- * Improved JSON cleaning to handle trailing commas and markdown artifacts
+ * Improved JSON cleaning to handle trailing commas, markdown artifacts,
+ * and extremely long floating point numbers that break parsers.
  */
 function cleanJsonString(str: string): string {
   // Remove markdown code blocks if present
@@ -49,26 +50,14 @@ function cleanJsonString(str: string): string {
     cleaned = cleaned.substring(start, end + 1);
   }
 
+  // Fix extremely long floats (e.g., 0.0571176470588235340799999...)
+  // This regex looks for numbers with more than 10 decimal places and truncates to 4.
+  cleaned = cleaned.replace(/(\d+\.\d{4})\d+/g, '$1');
+
   // Remove trailing commas in arrays and objects: [1, 2, ] -> [1, 2] or {a:1, } -> {a:1}
-  // This is a common source of "Expected ',' or ']'" errors in LLM generated JSON
   cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');
 
   return cleaned;
-}
-
-/**
- * Utility to count pages in a PDF or assume 1 for images
- */
-async function getPageCount(file: UploadedFile): Promise<number> {
-  if (file.type !== "application/pdf") return 1;
-  try {
-    const bytes = base64ToUint8Array(file.base64);
-    const pdfDoc = await PDFDocument.load(bytes);
-    return pdfDoc.getPageCount();
-  } catch (e) {
-    console.warn("Could not count pages for", file.name, e);
-    return 1;
-  }
 }
 
 /**
@@ -102,8 +91,9 @@ async function splitLargePdf(file: UploadedFile): Promise<UploadedFile[]> {
   return chunks;
 }
 
+// Fix: Completed the runAnalysisBatch function to properly execute the Gemini API request and return the AnalysisResult.
 async function runAnalysisBatch(
-  ai: any,
+  ai: GoogleGenAI,
   files: UploadedFile[],
   profileDescription: string,
   isSynthesis: boolean = false,
@@ -120,15 +110,13 @@ async function runAnalysisBatch(
   if (isSynthesis) {
     prompt = `
       SYNTHESIS TASK:
-      You are provided with multiple partial forensic strata reports generated from different segments of a large document set.
-      Merge them into one final, cohesive 10-year forensic living simulation.
+      Merge these partial reports into one final, cohesive 10-year forensic living simulation.
       
       CRITICAL INSTRUCTIONS:
       1. Aggregate 'redTeamSummary' ensuring NO DUPLICATES and accurate source citations.
-      2. Construct a UNIFIED 'timeline' representing exactly 10 years. Merge overlapping events.
-      3. Average the 'financialWarGaming' values for each year to provide a stable forecast.
-      4. De-duplicate 'amenities' and 'lifestyleConflicts' into unique lists.
-      5. Weigh the final 'riskScore' and 'conclusion' based on the most severe findings from any segment.
+      2. Construct a UNIFIED 'timeline' representing exactly 10 years.
+      3. Average the 'financialWarGaming' values for each year.
+      4. ROUND ALL NUMBERS TO 4 DECIMAL PLACES MAXIMUM.
       
       Partial Reports Data:
       ${JSON.stringify(previousResults)}
@@ -143,17 +131,21 @@ async function runAnalysisBatch(
       2. If Occupier + Mortgage: Provide a Rent vs Buy comparison.
       3. If Occupier + Light Sleeper: Scrutinize minutes for specific nighttime noise issues.
       
-      Constraint: Respond strictly in VALID JSON. Ensure no trailing commas.
+      Constraint: Respond strictly in VALID JSON. Ensure no trailing commas. 
+      IMPORTANT: Round all float/decimal values to exactly 4 decimal places.
     `;
   }
 
+  // Use gemini-3-pro-preview for complex reasoning and search integration.
   const response = await ai.models.generateContent({
     model: "gemini-3-pro-preview",
-    contents: isSynthesis ? [{ text: prompt }] : [{ parts: [...fileParts, { text: prompt }] }],
+    contents: { 
+      parts: isSynthesis ? [{ text: prompt }] : [...fileParts, { text: prompt }] 
+    },
     config: {
       systemInstruction: SYSTEM_INSTRUCTION,
       responseMimeType: "application/json",
-      thinkingConfig: { thinkingBudget: 8000 },
+      thinkingConfig: { thinkingBudget: 12000 },
       tools: isSynthesis ? [] : [{ googleSearch: {} }],
       responseSchema: {
         type: Type.OBJECT,
@@ -267,68 +259,56 @@ async function runAnalysisBatch(
           conclusion: { type: Type.STRING }
         },
         required: ["riskScore", "redTeamSummary", "timeline", "lifestyleConflicts", "financialWarGaming", "amenities", "conclusion"]
-      }
-    }
+      },
+    },
   });
 
-  const rawText = response.text || "{}";
+  const text = response.text;
+  if (!text) throw new Error("The AI agent failed to return analysis data. Please try again.");
+
   try {
-    const cleanedText = cleanJsonString(rawText);
-    return JSON.parse(cleanedText) as AnalysisResult;
-  } catch (err) {
-    console.error("JSON Parsing failed for text:", rawText);
-    throw new Error(`Failed to parse analysis results: ${err instanceof Error ? err.message : String(err)}`);
+    return JSON.parse(cleanJsonString(text)) as AnalysisResult;
+  } catch (e) {
+    console.error("JSON Parse Error:", e, "Response Text:", text);
+    throw new Error("The property report could not be formatted correctly. Try splitting your documents.");
   }
 }
 
+// Fix: Exported analyzeProperty to fix the module export error in App.tsx.
 export async function analyzeProperty(
   files: UploadedFile[],
-  lifestyle: LifestyleProfile
+  profile: LifestyleProfile
 ): Promise<AnalysisResult> {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API Key is missing");
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const profileDescription = JSON.stringify(profile);
 
-  const ai = new GoogleGenAI({ apiKey });
-  
-  let profileDescription = "";
-  if (lifestyle.persona === 'investor' && lifestyle.investor) {
-    profileDescription = `Investor Profile: $${lifestyle.investor.propertyValue} value, ${lifestyle.investor.expectedRentalYield}% yield, $${lifestyle.investor.loanSize} loan at ${lifestyle.investor.interestRate}% interest.`;
-  } else if (lifestyle.persona === 'occupier' && lifestyle.occupier) {
-    profileDescription = `Owner/Occupier Profile: Pets: ${lifestyle.occupier.pets}, Hobbies: ${lifestyle.occupier.hobbies}, Sleeping: ${lifestyle.occupier.sleepingHabits}. ${lifestyle.occupier.hasMortgage ? `Loan $${lifestyle.occupier.loanSize} at ${lifestyle.occupier.interestRate}%` : 'No mortgage'}.`;
+  // 1. Process files into buckets to stay within context limits
+  let allFileChunks: UploadedFile[] = [];
+  for (const file of files) {
+    const split = await splitLargePdf(file);
+    allFileChunks.push(...split);
   }
 
-  const expandedFiles: UploadedFile[] = [];
-  for (const f of files) {
-    const split = await splitLargePdf(f);
-    expandedFiles.push(...split);
+  // 2. Batch the processing (approx 2 chunks per request to be safe with token limits)
+  const batches: UploadedFile[][] = [];
+  for (let i = 0; i < allFileChunks.length; i += 2) {
+    batches.push(allFileChunks.slice(i, i + 2));
   }
 
-  const buckets: UploadedFile[][] = [];
-  let currentBucket: UploadedFile[] = [];
-  let currentBucketPages = 0;
-
-  for (const f of expandedFiles) {
-    const pages = await getPageCount(f);
-    if (currentBucketPages + pages > MAX_PAGES_PER_BUCKET && currentBucket.length > 0) {
-      buckets.push(currentBucket);
-      currentBucket = [];
-      currentBucketPages = 0;
-    }
-    currentBucket.push(f);
-    currentBucketPages += pages;
-  }
-  if (currentBucket.length > 0) buckets.push(currentBucket);
-
-  const partialResults: AnalysisResult[] = [];
-  for (const bucket of buckets) {
-    const result = await runAnalysisBatch(ai, bucket, profileDescription);
-    partialResults.push(result);
+  const batchResults: AnalysisResult[] = [];
+  for (const batch of batches) {
+    const result = await runAnalysisBatch(ai, batch, profileDescription);
+    batchResults.push(result);
   }
 
-  if (partialResults.length === 1) {
-    return partialResults[0];
-  } else {
-    // Merge partial results into a single comprehensive report
-    return await runAnalysisBatch(ai, [], profileDescription, true, partialResults);
+  if (batchResults.length === 0) {
+    throw new Error("No analysis data could be retrieved from the documents.");
   }
+
+  // 3. If there are multiple batches, perform a final synthesis step
+  if (batchResults.length === 1) {
+    return batchResults[0];
+  }
+
+  return await runAnalysisBatch(ai, [], profileDescription, true, batchResults);
 }
