@@ -52,6 +52,8 @@ export interface FinancialProjected {
   fundBalance: number;
   levyImpact: number;
   yieldImpact?: number; 
+  yieldImpactBestCase?: number;
+  yieldImpactWorstCase?: number;
   totalMonthlyOwnershipCost?: number; // For Rent vs Buy
 }
 

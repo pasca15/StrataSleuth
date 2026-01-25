@@ -4,15 +4,8 @@ import { AnalysisResult, LifestyleProfile, UploadedFile } from "../types";
 import { SYSTEM_INSTRUCTION } from "../constants";
 import { PDFDocument } from "pdf-lib";
 
-/** 
- * Reduced from 1000 to 250. 
- * Strata documents are often dense scans; 1000 pages can easily exceed 1M tokens.
- */
 const MAX_PAGES_PER_BUCKET = 250;
 
-/**
- * Robust base64 to Uint8Array conversion to avoid stack overflow on large files
- */
 function base64ToUint8Array(base64: string): Uint8Array {
   const binaryString = atob(base64);
   const len = binaryString.length;
@@ -23,9 +16,6 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
-/**
- * Robust Uint8Array to base64 conversion to avoid stack overflow on large files
- */
 function uint8ArrayToBase64(bytes: Uint8Array): string {
   let binary = '';
   const len = bytes.byteLength;
@@ -36,62 +26,72 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
 }
 
 /**
- * Improved JSON cleaning to handle trailing commas, markdown artifacts,
- * and extremely long floating point numbers that break parsers.
+ * Aggressive numerical cleaner to prevent JSON parsing errors.
+ * Rounds all numbers to 4 decimal places and eliminates extreme scientific notation.
  */
-function cleanJsonString(str: string): string {
-  // Remove markdown code blocks if present
-  let cleaned = str.replace(/```json/g, "").replace(/```/g, "").trim();
-  
-  // Isolate the JSON object
+function cleanJsonNumerical(jsonString: string): string {
+  // Regex to match integers, floats, and scientific notation
+  const numberRegex = /-?\d+\.?\d*([eE][+-]?\d+)?/g;
+  return jsonString.replace(numberRegex, (match) => {
+    const num = parseFloat(match);
+    // If it's not a valid finite number or is ridiculously small/large, return "0"
+    if (!isFinite(num) || Math.abs(num) < 1e-15 && num !== 0) return "0";
+    // Return rounded to 4 decimal places, removing trailing zeros
+    return parseFloat(num.toFixed(4)).toString();
+  });
+}
+
+function cleanJsonString(rawString: string): any {
+  let cleaned = rawString.replace(/```json/g, "").replace(/```/g, "").trim();
+
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");
   if (start !== -1 && end !== -1) {
     cleaned = cleaned.substring(start, end + 1);
   }
 
-  // Fix extremely long floats (e.g., 0.0571176470588235340799999...)
-  // This regex looks for numbers with more than 10 decimal places and truncates to 4.
-  cleaned = cleaned.replace(/(\d+\.\d{4})\d+/g, '$1');
+  // Clean numerical values before parsing to avoid "Expected ',' or ']'" errors
+  cleaned = cleanJsonNumerical(cleaned);
 
-  // Remove trailing commas in arrays and objects: [1, 2, ] -> [1, 2] or {a:1, } -> {a:1}
-  cleaned = cleaned.replace(/,\s*([\]}])/g, '$1');
-
-  return cleaned;
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error("JSON Parse failed after sanitization:", e);
+    // Attempt to fix common missing comma/bracket issues as a last resort
+    try {
+        // Simple heuristic for trailing commas or missing closing braces
+        const repaired = cleaned.replace(/,\s*([\]}])/g, '$1');
+        return JSON.parse(repaired);
+    } catch (innerError) {
+        throw new Error("Critical parsing failure. The data structure returned by the AI was malformed and could not be repaired.");
+    }
+  }
 }
 
-/**
- * Splits a single PDF into smaller buckets
- */
 async function splitLargePdf(file: UploadedFile): Promise<UploadedFile[]> {
   if (file.type !== "application/pdf") return [file];
-  
-  const originalBytes = base64ToUint8Array(file.base64);
-  const pdfDoc = await PDFDocument.load(originalBytes);
-  const totalPages = pdfDoc.getPageCount();
-  
-  if (totalPages <= MAX_PAGES_PER_BUCKET) return [file];
-  
-  const chunks: UploadedFile[] = [];
-  for (let i = 0; i < totalPages; i += MAX_PAGES_PER_BUCKET) {
-    const end = Math.min(i + MAX_PAGES_PER_BUCKET, totalPages);
-    const subDoc = await PDFDocument.create();
-    const indices = Array.from({ length: end - i }, (_, k) => i + k);
-    const pages = await subDoc.copyPages(pdfDoc, indices);
-    pages.forEach(p => subDoc.addPage(p));
-    
-    const bytes = await subDoc.save();
-    const base64 = uint8ArrayToBase64(bytes);
-    chunks.push({
-      ...file,
-      name: `${file.name} (Pages ${i + 1}-${end})`,
-      base64
-    });
+  try {
+    const originalBytes = base64ToUint8Array(file.base64);
+    const pdfDoc = await PDFDocument.load(originalBytes);
+    const totalPages = pdfDoc.getPageCount();
+    if (totalPages <= MAX_PAGES_PER_BUCKET) return [file];
+    const chunks: UploadedFile[] = [];
+    for (let i = 0; i < totalPages; i += MAX_PAGES_PER_BUCKET) {
+      const end = Math.min(i + MAX_PAGES_PER_BUCKET, totalPages);
+      const subDoc = await PDFDocument.create();
+      const indices = Array.from({ length: end - i }, (_, k) => i + k);
+      const pages = await subDoc.copyPages(pdfDoc, indices);
+      pages.forEach(p => subDoc.addPage(p));
+      const bytes = await subDoc.save();
+      const base64 = uint8ArrayToBase64(bytes);
+      chunks.push({ ...file, name: `${file.name} (Pages ${i + 1}-${end})`, base64 });
+    }
+    return chunks;
+  } catch (err) {
+    return [file];
   }
-  return chunks;
 }
 
-// Fix: Completed the runAnalysisBatch function to properly execute the Gemini API request and return the AnalysisResult.
 async function runAnalysisBatch(
   ai: GoogleGenAI,
   files: UploadedFile[],
@@ -100,50 +100,44 @@ async function runAnalysisBatch(
   previousResults: AnalysisResult[] = []
 ): Promise<AnalysisResult> {
   const fileParts = files.map(file => ({
-    inlineData: {
-      data: file.base64,
-      mimeType: file.type || "application/pdf"
-    }
+    inlineData: { data: file.base64, mimeType: file.type || "application/pdf" }
   }));
 
   let prompt = "";
   if (isSynthesis) {
     prompt = `
-      SYNTHESIS TASK:
-      Merge these partial reports into one final, cohesive 10-year forensic living simulation.
-      
-      CRITICAL INSTRUCTIONS:
-      1. Aggregate 'redTeamSummary' ensuring NO DUPLICATES and accurate source citations.
-      2. Construct a UNIFIED 'timeline' representing exactly 10 years.
-      3. Average the 'financialWarGaming' values for each year.
-      4. ROUND ALL NUMBERS TO 4 DECIMAL PLACES MAXIMUM.
-      
-      Partial Reports Data:
-      ${JSON.stringify(previousResults)}
+      SYNTHESIS TASK: Merge these partial reports into one final, cohesive 10-year forensic living simulation.
+      1. Aggregate 'redTeamSummary' without duplicates.
+      2. Construct a UNIFIED 'timeline' for 10 years.
+      3. CRITICAL: For 'financialWarGaming', provide exactly 5 years of 'yieldImpactBestCase' and 'yieldImpactWorstCase' (2026-2030).
+      4. DO NOT OUTPUT NUMBERS WITH MORE THAN 4 DECIMAL PLACES. 
+      5. Ensure 'rentVsBuy' is synthesized accurately.
+      Data: ${JSON.stringify(previousResults)}
     `;
   } else {
     prompt = `
-      Conduct a 10-year forensic living simulation.
+      Conduct a 10-year forensic living simulation based on the provided documents.
       Profile: ${profileDescription}
 
-      Key Objectives:
-      1. Search for real rental market data for the address/suburb found in documents.
-      2. If Occupier + Mortgage: Provide a Rent vs Buy comparison.
-      3. If Occupier + Light Sleeper: Scrutinize minutes for specific nighttime noise issues.
-      
-      Constraint: Respond strictly in VALID JSON. Ensure no trailing commas. 
-      IMPORTANT: Round all float/decimal values to exactly 4 decimal places.
+      YIELD EROSION FORECAST (Next 5 Years):
+      Generate two distinct scenarios for the years 2026, 2027, 2028, 2029, 2030:
+      - yieldImpactBestCase: Optimistic scenario with minimal special levies and standard maintenance.
+      - yieldImpactWorstCase: Realistic "Nightmare" scenario where major identified defects (like waterproofing/cladding) result in significant special levies.
+
+      IMPORTANT RULES: 
+      - Return exactly 10 years of data in 'financialWarGaming' (e.g. 2026-2035). 
+      - Popuate 'yieldImpactBestCase' and 'yieldImpactWorstCase' ONLY for the first 5 years.
+      - ROUND ALL NUMBERS to 4 decimal places. No long floats. No scientific notation.
     `;
   }
 
-  // Use gemini-3-pro-preview for complex reasoning and search integration.
   const response = await ai.models.generateContent({
     model: "gemini-3-pro-preview",
     contents: { 
       parts: isSynthesis ? [{ text: prompt }] : [...fileParts, { text: prompt }] 
     },
     config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
+      systemInstruction: SYSTEM_INSTRUCTION + " MANDATORY: All numeric values in the JSON output MUST be rounded to 4 decimal places. Do not output more than 4 digits after a decimal point.",
       responseMimeType: "application/json",
       thinkingConfig: { thinkingBudget: 12000 },
       tools: isSynthesis ? [] : [{ googleSearch: {} }],
@@ -159,10 +153,7 @@ async function runAnalysisBatch(
                 content: { type: Type.STRING },
                 source: {
                   type: Type.OBJECT,
-                  properties: {
-                    fileName: { type: Type.STRING },
-                    pageNumber: { type: Type.STRING },
-                  },
+                  properties: { fileName: { type: Type.STRING }, pageNumber: { type: Type.STRING } },
                   required: ["fileName", "pageNumber"]
                 }
               },
@@ -188,11 +179,7 @@ async function runAnalysisBatch(
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
-              properties: {
-                bylaw: { type: Type.STRING },
-                conflict: { type: Type.STRING },
-                recommendation: { type: Type.STRING },
-              },
+              properties: { bylaw: { type: Type.STRING }, conflict: { type: Type.STRING }, recommendation: { type: Type.STRING } },
               required: ["bylaw", "conflict", "recommendation"]
             }
           },
@@ -205,7 +192,8 @@ async function runAnalysisBatch(
                 expectedCost: { type: Type.NUMBER },
                 fundBalance: { type: Type.NUMBER },
                 levyImpact: { type: Type.NUMBER },
-                yieldImpact: { type: Type.NUMBER },
+                yieldImpactBestCase: { type: Type.NUMBER },
+                yieldImpactWorstCase: { type: Type.NUMBER },
                 totalMonthlyOwnershipCost: { type: Type.NUMBER },
               },
               required: ["year", "expectedCost", "fundBalance", "levyImpact"]
@@ -215,22 +203,13 @@ async function runAnalysisBatch(
             type: Type.ARRAY,
             items: {
               type: Type.OBJECT,
-              properties: {
-                name: { type: Type.STRING },
-                condition: { type: Type.STRING },
-                forecastedMaintenanceYear: { type: Type.NUMBER },
-                estimatedCost: { type: Type.STRING },
-              },
+              properties: { name: { type: Type.STRING }, condition: { type: Type.STRING }, forecastedMaintenanceYear: { type: Type.NUMBER }, estimatedCost: { type: Type.STRING } },
               required: ["name", "condition", "forecastedMaintenanceYear", "estimatedCost"]
             }
           },
           recommendedRent: {
             type: Type.OBJECT,
-            properties: {
-              weekly: { type: Type.NUMBER },
-              annual: { type: Type.NUMBER },
-              justification: { type: Type.STRING },
-            },
+            properties: { weekly: { type: Type.NUMBER }, annual: { type: Type.NUMBER }, justification: { type: Type.STRING } },
             required: ["weekly", "annual", "justification"]
           },
           rentVsBuy: {
@@ -245,11 +224,7 @@ async function runAnalysisBatch(
                 type: Type.ARRAY,
                 items: {
                   type: Type.OBJECT,
-                  properties: {
-                    year: { type: Type.NUMBER },
-                    ownershipCost: { type: Type.NUMBER },
-                    estimatedRent: { type: Type.NUMBER },
-                  },
+                  properties: { year: { type: Type.NUMBER }, ownershipCost: { type: Type.NUMBER }, estimatedRent: { type: Type.NUMBER } },
                   required: ["year", "ownershipCost", "estimatedRent"]
                 }
               }
@@ -259,56 +234,37 @@ async function runAnalysisBatch(
           conclusion: { type: Type.STRING }
         },
         required: ["riskScore", "redTeamSummary", "timeline", "lifestyleConflicts", "financialWarGaming", "amenities", "conclusion"]
-      },
-    },
+      }
+    }
   });
 
   const text = response.text;
-  if (!text) throw new Error("The AI agent failed to return analysis data. Please try again.");
-
-  try {
-    return JSON.parse(cleanJsonString(text)) as AnalysisResult;
-  } catch (e) {
-    console.error("JSON Parse Error:", e, "Response Text:", text);
-    throw new Error("The property report could not be formatted correctly. Try splitting your documents.");
+  if (!text || text.trim() === "") {
+    throw new Error("The AI returned an empty response. This may be due to safety filters or a temporary model timeout.");
   }
+
+  return cleanJsonString(text) as AnalysisResult;
 }
 
-// Fix: Exported analyzeProperty to fix the module export error in App.tsx.
-export async function analyzeProperty(
-  files: UploadedFile[],
-  profile: LifestyleProfile
-): Promise<AnalysisResult> {
+export async function analyzeProperty(files: UploadedFile[], profile: LifestyleProfile): Promise<AnalysisResult> {
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const profileDescription = JSON.stringify(profile);
-
-  // 1. Process files into buckets to stay within context limits
-  let allFileChunks: UploadedFile[] = [];
+  const allProcessedFiles: UploadedFile[] = [];
   for (const file of files) {
     const split = await splitLargePdf(file);
-    allFileChunks.push(...split);
+    allProcessedFiles.push(...split);
   }
 
-  // 2. Batch the processing (approx 2 chunks per request to be safe with token limits)
-  const batches: UploadedFile[][] = [];
-  for (let i = 0; i < allFileChunks.length; i += 2) {
-    batches.push(allFileChunks.slice(i, i + 2));
+  if (allProcessedFiles.length > 2) {
+    const partialReports: AnalysisResult[] = [];
+    // Process in pairs to maintain context without overloading token limits
+    for (let i = 0; i < allProcessedFiles.length; i += 2) {
+      const batch = allProcessedFiles.slice(i, i + 2);
+      const res = await runAnalysisBatch(ai, batch, profileDescription);
+      partialReports.push(res);
+    }
+    return await runAnalysisBatch(ai, [], profileDescription, true, partialReports);
+  } else {
+    return await runAnalysisBatch(ai, allProcessedFiles, profileDescription);
   }
-
-  const batchResults: AnalysisResult[] = [];
-  for (const batch of batches) {
-    const result = await runAnalysisBatch(ai, batch, profileDescription);
-    batchResults.push(result);
-  }
-
-  if (batchResults.length === 0) {
-    throw new Error("No analysis data could be retrieved from the documents.");
-  }
-
-  // 3. If there are multiple batches, perform a final synthesis step
-  if (batchResults.length === 1) {
-    return batchResults[0];
-  }
-
-  return await runAnalysisBatch(ai, [], profileDescription, true, batchResults);
 }
