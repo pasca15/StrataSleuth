@@ -26,44 +26,100 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
 }
 
 /**
- * Aggressive numerical cleaner to prevent JSON parsing errors.
- * Rounds all numbers to 4 decimal places and eliminates extreme scientific notation.
+ * Advanced JSON forensic cleaner.
+ * 1. Rounds "toxic" floats to 4 decimal places.
+ * 2. Injects missing commas between adjacent objects/arrays (common LLM failure).
+ * 3. Operates character-by-character to protect data inside strings.
  */
-function cleanJsonNumerical(jsonString: string): string {
-  // Regex to match integers, floats, and scientific notation
-  const numberRegex = /-?\d+\.?\d*([eE][+-]?\d+)?/g;
-  return jsonString.replace(numberRegex, (match) => {
-    const num = parseFloat(match);
-    // If it's not a valid finite number or is ridiculously small/large, return "0"
-    if (!isFinite(num) || Math.abs(num) < 1e-15 && num !== 0) return "0";
-    // Return rounded to 4 decimal places, removing trailing zeros
-    return parseFloat(num.toFixed(4)).toString();
-  });
+function forensicJsonSanitize(jsonString: string): string {
+  let result = "";
+  let inQuote = false;
+  let i = 0;
+  
+  while (i < jsonString.length) {
+    const char = jsonString[i];
+    
+    // Toggle inQuote state, respecting escaped quotes
+    if (char === '"' && (i === 0 || jsonString[i-1] !== '\\')) {
+      inQuote = !inQuote;
+      result += char;
+      i++;
+      continue;
+    }
+    
+    // Structural and numerical repairs happen ONLY outside of quotes
+    if (!inQuote) {
+      // 1. Repair missing commas between structural boundaries: } { or ] [ or ] { etc.
+      if (char === '}' || char === ']') {
+        result += char;
+        let j = i + 1;
+        // Skip whitespace
+        while (j < jsonString.length && /\s/.test(jsonString[j])) j++;
+        // If next non-white char is start of another object/array, inject a comma
+        if (j < jsonString.length && (jsonString[j] === '{' || jsonString[j] === '[')) {
+          result += ",";
+        }
+        i = j;
+        continue;
+      }
+
+      // 2. Locate and round high-precision numerical values
+      const remaining = jsonString.substring(i);
+      const numMatch = remaining.match(/^-?\d+(\.\d+)?([eE][+-]?\d+)?/);
+      
+      if (numMatch) {
+        const rawNum = numMatch[0];
+        const num = parseFloat(rawNum);
+        
+        if (!isNaN(num) && isFinite(num)) {
+          // Force 4 decimal places to prevent parser overflow or scientific notation hallucinations
+          result += (Math.round(num * 10000) / 10000).toString();
+        } else {
+          result += "0";
+        }
+        
+        i += rawNum.length;
+        continue;
+      }
+    }
+    
+    result += char;
+    i++;
+  }
+  
+  return result;
 }
 
 function cleanJsonString(rawString: string): any {
+  // 1. Extract JSON block
   let cleaned = rawString.replace(/```json/g, "").replace(/```/g, "").trim();
-
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");
+  
   if (start !== -1 && end !== -1) {
     cleaned = cleaned.substring(start, end + 1);
+  } else {
+    throw new Error("The forensic report was incomplete or missing valid data structures.");
   }
 
-  // Clean numerical values before parsing to avoid "Expected ',' or ']'" errors
-  cleaned = cleanJsonNumerical(cleaned);
+  // 2. Perform forensic sanitization (Numerical rounding + Structural repair)
+  cleaned = forensicJsonSanitize(cleaned);
 
   try {
     return JSON.parse(cleaned);
-  } catch (e) {
-    console.error("JSON Parse failed after sanitization:", e);
-    // Attempt to fix common missing comma/bracket issues as a last resort
+  } catch (e: any) {
+    console.error("Forensic JSON parse failed:", e);
+    
+    // Last-ditch heuristic repair for trailing commas or common syntax breaks
     try {
-        // Simple heuristic for trailing commas or missing closing braces
-        const repaired = cleaned.replace(/,\s*([\]}])/g, '$1');
-        return JSON.parse(repaired);
+      const fallbackRepair = cleaned
+        .replace(/,\s*([\]}])/g, '$1') // Trailing commas
+        .replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":'); // Unquoted keys
+      
+      return JSON.parse(fallbackRepair);
     } catch (innerError) {
-        throw new Error("Critical parsing failure. The data structure returned by the AI was malformed and could not be repaired.");
+      const errorContext = e.message || "Unknown Syntax Error";
+      throw new Error(`Forensic Audit Interrupted: The data stream was corrupted (${errorContext}). Please try a smaller document batch.`);
     }
   }
 }
@@ -75,6 +131,7 @@ async function splitLargePdf(file: UploadedFile): Promise<UploadedFile[]> {
     const pdfDoc = await PDFDocument.load(originalBytes);
     const totalPages = pdfDoc.getPageCount();
     if (totalPages <= MAX_PAGES_PER_BUCKET) return [file];
+    
     const chunks: UploadedFile[] = [];
     for (let i = 0; i < totalPages; i += MAX_PAGES_PER_BUCKET) {
       const end = Math.min(i + MAX_PAGES_PER_BUCKET, totalPages);
@@ -84,7 +141,7 @@ async function splitLargePdf(file: UploadedFile): Promise<UploadedFile[]> {
       pages.forEach(p => subDoc.addPage(p));
       const bytes = await subDoc.save();
       const base64 = uint8ArrayToBase64(bytes);
-      chunks.push({ ...file, name: `${file.name} (Pages ${i + 1}-${end})`, base64 });
+      chunks.push({ ...file, name: `${file.name} (Part ${Math.floor(i/MAX_PAGES_PER_BUCKET) + 1})`, base64 });
     }
     return chunks;
   } catch (err) {
@@ -106,12 +163,12 @@ async function runAnalysisBatch(
   let prompt = "";
   if (isSynthesis) {
     prompt = `
-      SYNTHESIS TASK: Merge these partial reports into one final, cohesive 10-year forensic living simulation.
-      1. Aggregate 'redTeamSummary' without duplicates.
-      2. Construct a UNIFIED 'timeline' for 10 years.
-      3. CRITICAL: For 'financialWarGaming', provide exactly 5 years of 'yieldImpactBestCase' and 'yieldImpactWorstCase' (2026-2030).
-      4. DO NOT OUTPUT NUMBERS WITH MORE THAN 4 DECIMAL PLACES. 
-      5. Ensure 'rentVsBuy' is synthesized accurately.
+      SYNTHESIS TASK: Merge the following partial reports into one final, cohesive 10-year forensic living simulation.
+      1. Aggregate all 'redTeamSummary' entries without duplicates.
+      2. Construct a unified 'timeline' for exactly 10 years (e.g. 2026-2035).
+      3. For 'financialWarGaming', ensure 'yieldImpactBestCase' and 'yieldImpactWorstCase' are provided for 5 years (2026-2030).
+      4. DO NOT OUTPUT NUMBERS WITH MORE THAN 4 DECIMAL PLACES.
+      5. CRITICAL: Ensure every array element is separated by a comma.
       Data: ${JSON.stringify(previousResults)}
     `;
   } else {
@@ -119,15 +176,15 @@ async function runAnalysisBatch(
       Conduct a 10-year forensic living simulation based on the provided documents.
       Profile: ${profileDescription}
 
-      YIELD EROSION FORECAST (Next 5 Years):
-      Generate two distinct scenarios for the years 2026, 2027, 2028, 2029, 2030:
-      - yieldImpactBestCase: Optimistic scenario with minimal special levies and standard maintenance.
-      - yieldImpactWorstCase: Realistic "Nightmare" scenario where major identified defects (like waterproofing/cladding) result in significant special levies.
+      YIELD EROSION FORECAST (Next 5 Years ONLY):
+      Generate two distinct net rental yield scenarios for the years 2026, 2027, 2028, 2029, 2030:
+      - yieldImpactBestCase: Optimized net yield scenario.
+      - yieldImpactWorstCase: realistic "Nightmare" net yield scenario (accounting for special levies/maintenance found in minutes).
 
-      IMPORTANT RULES: 
-      - Return exactly 10 years of data in 'financialWarGaming' (e.g. 2026-2035). 
-      - Popuate 'yieldImpactBestCase' and 'yieldImpactWorstCase' ONLY for the first 5 years.
+      IMPORTANT RULES:
+      - Return 10 years for 'financialWarGaming'. Only the first 5 entries should include yieldImpact fields.
       - ROUND ALL NUMBERS to 4 decimal places. No long floats. No scientific notation.
+      - ENSURE COMMAS separate all objects in arrays.
     `;
   }
 
@@ -137,9 +194,9 @@ async function runAnalysisBatch(
       parts: isSynthesis ? [{ text: prompt }] : [...fileParts, { text: prompt }] 
     },
     config: {
-      systemInstruction: SYSTEM_INSTRUCTION + " MANDATORY: All numeric values in the JSON output MUST be rounded to 4 decimal places. Do not output more than 4 digits after a decimal point.",
+      systemInstruction: SYSTEM_INSTRUCTION + " MANDATORY: Return a VALID JSON object. All numeric values must be rounded to 4 decimal places. No scientific notation. Ensure all array elements are comma-separated.",
       responseMimeType: "application/json",
-      thinkingConfig: { thinkingBudget: 12000 },
+      thinkingConfig: { thinkingBudget: 15000 },
       tools: isSynthesis ? [] : [{ googleSearch: {} }],
       responseSchema: {
         type: Type.OBJECT,
@@ -240,7 +297,7 @@ async function runAnalysisBatch(
 
   const text = response.text;
   if (!text || text.trim() === "") {
-    throw new Error("The AI returned an empty response. This may be due to safety filters or a temporary model timeout.");
+    throw new Error("Empty response from building audit. The model may have timed out or hit complexity limits.");
   }
 
   return cleanJsonString(text) as AnalysisResult;
@@ -250,6 +307,7 @@ export async function analyzeProperty(files: UploadedFile[], profile: LifestyleP
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const profileDescription = JSON.stringify(profile);
   const allProcessedFiles: UploadedFile[] = [];
+  
   for (const file of files) {
     const split = await splitLargePdf(file);
     allProcessedFiles.push(...split);
@@ -257,7 +315,6 @@ export async function analyzeProperty(files: UploadedFile[], profile: LifestyleP
 
   if (allProcessedFiles.length > 2) {
     const partialReports: AnalysisResult[] = [];
-    // Process in pairs to maintain context without overloading token limits
     for (let i = 0; i < allProcessedFiles.length; i += 2) {
       const batch = allProcessedFiles.slice(i, i + 2);
       const res = await runAnalysisBatch(ai, batch, profileDescription);
