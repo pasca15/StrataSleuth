@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { UploadedFile } from '../types';
-import { ICONS } from '../constants';
+import { ICONS, anonymizeAddress } from '../constants';
 
 interface FileUploadProps {
   onFilesChange: (files: UploadedFile[]) => void;
@@ -16,8 +16,12 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesChange, files }) 
     for (let i = 0; i < e.target.files.length; i++) {
       const file = e.target.files[i];
       const base64 = await fileToBase64(file);
+      
+      // Anonymize the file name itself to ensure no leakage
+      const sanitizedName = anonymizeAddress(file.name);
+      
       newFiles.push({
-        name: file.name,
+        name: sanitizedName,
         type: file.type,
         base64
       });
@@ -72,6 +76,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFilesChange, files }) 
               <button 
                 onClick={() => removeFile(idx)}
                 className="text-zinc-500 hover:text-red-500 transition-colors"
+                type="button"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
               </button>

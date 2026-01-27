@@ -167,8 +167,9 @@ async function runAnalysisBatch(
       1. Aggregate all 'redTeamSummary' entries without duplicates.
       2. Construct a unified 'timeline' for exactly 10 years (e.g. 2026-2035).
       3. For 'financialWarGaming', ensure 'yieldImpactBestCase' and 'yieldImpactWorstCase' are provided for 5 years (2026-2030).
-      4. DO NOT OUTPUT NUMBERS WITH MORE THAN 4 DECIMAL PLACES.
-      5. CRITICAL: Ensure every array element is separated by a comma.
+      4. CITATIONS: If a risk (like a Fire Safety Order) is mentioned multiple times, CITE the page that contains the most severe impact or definitive evidence.
+      5. DO NOT OUTPUT NUMBERS WITH MORE THAN 4 DECIMAL PLACES.
+      6. CRITICAL: Ensure every array element is separated by a comma.
       Data: ${JSON.stringify(previousResults)}
     `;
   } else {
@@ -182,6 +183,7 @@ async function runAnalysisBatch(
       - yieldImpactWorstCase: realistic "Nightmare" net yield scenario (accounting for special levies/maintenance found in minutes).
 
       IMPORTANT RULES:
+      - CITATIONS: If a risk (like a Fire Safety Order) is mentioned multiple times in the documents, CITE the page that contains the most severe impact or definitive evidence in your 'redTeamSummary'.
       - Return 10 years for 'financialWarGaming'. Only the first 5 entries should include yieldImpact fields.
       - ROUND ALL NUMBERS to 4 decimal places. No long floats. No scientific notation.
       - ENSURE COMMAS separate all objects in arrays.
@@ -288,7 +290,11 @@ async function runAnalysisBatch(
             },
             required: ["monthlyOwnershipCost", "marketRentEquivalent", "tenYearTotalDelta", "justification", "yearlyProjection"]
           },
-          conclusion: { type: Type.STRING }
+          conclusion: { type: Type.STRING },
+          conclusionSource: {
+            type: Type.OBJECT,
+            properties: { fileName: { type: Type.STRING }, pageNumber: { type: Type.STRING } },
+          }
         },
         required: ["riskScore", "redTeamSummary", "timeline", "lifestyleConflicts", "financialWarGaming", "amenities", "conclusion"]
       }

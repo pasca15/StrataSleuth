@@ -97,6 +97,7 @@ export interface AnalysisResult {
   };
   rentVsBuy?: RentVsBuyComparison;
   conclusion: string;
+  conclusionSource?: Citation;
 }
 
 export interface UploadedFile {

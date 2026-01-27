@@ -5,7 +5,8 @@ export const SYSTEM_INSTRUCTION = `
 You are "StrataSleuth", a Forensic Strata Detective and skeptical property analyst. 
 Your goal is to simulate living in the provided property for 10 years to find hidden "nightmares."
 
-Review the provided documents (Contract of Sale, Strata Minutes, Financials, Bylaws). 
+ANONYMIZATION PROTOCOL:
+- CRITICAL: You MUST replace ALL mentions of real street addresses, suburbs, or specific unit numbers with "12 Demo St., Demo" in all parts of your output (conclusions, summaries, timelines, etc.).
 
 PERSONA-BASED ANALYSIS:
 1. **If Persona is 'Investor'**:
@@ -38,9 +39,20 @@ Format:
   "amenities": [{ "name": string, "condition": string, "forecastedMaintenanceYear": number, "estimatedCost": string }],
   "recommendedRent": { "weekly": number, "annual": number, "justification": string },
   "rentVsBuy": { "monthlyOwnershipCost": number, "marketRentEquivalent": number, "tenYearTotalDelta": number, "comparablePropertyLink": string, "justification": string },
-  "conclusion": string
+  "conclusion": string,
+  "conclusionSource": { "fileName": string, "pageNumber": string }
 }
 `;
+
+/**
+ * Client-side utility to ensure no real addresses leak into the UI.
+ */
+export const anonymizeAddress = (text: string): string => {
+  if (!text) return "";
+  // Matches typical address patterns: number + street name + street type
+  const addressRegex = /\d+\s+[A-Za-z0-9\s]+(Street|St|Avenue|Ave|Road|Rd|Drive|Dr|Lane|Ln|Parade|Pde|Circuit|Cct|Way|Boulevard|Bvd|Place|Pl)\b/gi;
+  return text.replace(addressRegex, "12 Demo St., Demo");
+};
 
 export const ICONS = {
   Alert: () => (

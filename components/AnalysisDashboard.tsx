@@ -1,7 +1,7 @@
 
 import React from 'react';
-import { AnalysisResult, BriefingPoint } from '../types';
-import { ICONS } from '../constants';
+import { AnalysisResult, BriefingPoint, Citation } from '../types';
+import { ICONS, anonymizeAddress } from '../constants';
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Legend
 } from 'recharts';
@@ -10,30 +10,34 @@ interface Props {
   data: AnalysisResult;
 }
 
+const TooltipSource: React.FC<{ source: Citation }> = ({ source }) => (
+  <div className="absolute bottom-full left-0 mb-3 invisible group-hover:visible z-50 w-72 p-4 bg-zinc-950 border border-zinc-800 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] text-[11px] animate-in fade-in zoom-in-95 duration-200 pointer-events-none">
+    <div className="flex items-center space-x-2 mb-2">
+      <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
+      <span className="font-black text-zinc-500 uppercase tracking-widest">Evidence Source</span>
+    </div>
+    <div className="space-y-1">
+      <span className="block text-zinc-200 font-bold leading-tight">{anonymizeAddress(source.fileName)}</span>
+      <span className="inline-block px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded text-[10px] font-bold">
+        Page {source.pageNumber}
+      </span>
+    </div>
+    <div className="absolute top-full left-6 border-l-[10px] border-r-[10px] border-t-[10px] border-l-transparent border-r-transparent border-t-zinc-800"></div>
+  </div>
+);
+
 const BriefingPointItem: React.FC<{ point: BriefingPoint }> = ({ point }) => {
   return (
     <li className="relative group pl-7 mb-4 last:mb-0 leading-relaxed text-zinc-400">
       <div className="absolute left-1 top-[0.6em] w-1.5 h-1.5 bg-blue-600 rounded-sm rotate-45 group-hover:bg-blue-400 transition-colors" />
       
-      <span className={`transition-colors duration-200 ${point.source ? 'cursor-help group-hover:text-zinc-100' : ''}`}>
-        {point.content}
-      </span>
+      <div className="flex flex-wrap items-center">
+        <span className={`transition-colors duration-200 ${point.source ? 'cursor-help group-hover:text-zinc-100' : ''}`}>
+          {anonymizeAddress(point.content)}
+        </span>
+      </div>
 
-      {point.source && (
-        <div className="absolute bottom-full left-0 mb-3 invisible group-hover:visible z-50 w-72 p-4 bg-zinc-950 border border-zinc-800 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] text-[11px] animate-in fade-in zoom-in-95 duration-200 pointer-events-none">
-          <div className="flex items-center space-x-2 mb-2">
-            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
-            <span className="font-black text-zinc-500 uppercase tracking-widest">Evidence Source</span>
-          </div>
-          <div className="space-y-1">
-            <span className="block text-zinc-200 font-bold leading-tight">{point.source.fileName}</span>
-            <span className="inline-block px-1.5 py-0.5 bg-blue-500/10 text-blue-400 rounded text-[10px] font-bold">
-              Page {point.source.pageNumber}
-            </span>
-          </div>
-          <div className="absolute top-full left-6 border-l-[10px] border-r-[10px] border-t-[10px] border-l-transparent border-r-transparent border-t-zinc-800"></div>
-        </div>
-      )}
+      {point.source && <TooltipSource source={point.source} />}
     </li>
   );
 };
@@ -45,7 +49,6 @@ export const AnalysisDashboard: React.FC<Props> = ({ data }) => {
     return 'text-emerald-400';
   };
 
-  // Limit yield data to first 5 entries (5-year forecast)
   const yieldData = data.financialWarGaming
     .filter(d => d.yieldImpactBestCase !== undefined || d.yieldImpactWorstCase !== undefined)
     .slice(0, 5);
@@ -54,14 +57,24 @@ export const AnalysisDashboard: React.FC<Props> = ({ data }) => {
     <div className="space-y-8 animate-in fade-in duration-500">
       {/* Top Level Risk & Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl flex flex-col items-center justify-center text-center border-t-4 border-t-blue-600/50">
+        <div className="relative group bg-zinc-900 border border-zinc-800 p-8 rounded-3xl flex flex-col items-center justify-center text-center border-t-4 border-t-blue-600/50">
           <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-2">Risk Exposure Index</span>
           <div className={`text-7xl font-black ${getRiskColor(data.riskScore)}`}>
             {Math.round(data.riskScore)}
           </div>
-          <div className="mt-6 border-t border-zinc-800 pt-4 w-full italic text-sm text-zinc-400">
-            "{data.conclusion}"
+          <div className="mt-6 border-t border-zinc-800 pt-4 w-full flex flex-col items-center">
+            <p className="italic text-sm text-zinc-400 mb-2 cursor-help group-hover:text-zinc-200 transition-colors">
+              "{anonymizeAddress(data.conclusion)}"
+            </p>
+            {data.conclusionSource && (
+              <div className="flex items-center text-[10px] text-zinc-500 font-mono opacity-0 group-hover:opacity-100 transition-opacity">
+                <ICONS.Link />
+                <span className="ml-1 uppercase font-bold tracking-tighter">Primary Evidence Source:</span>
+                <span className="ml-1 text-blue-400">{anonymizeAddress(data.conclusionSource.fileName)} (p. {data.conclusionSource.pageNumber})</span>
+              </div>
+            )}
           </div>
+          {data.conclusionSource && <TooltipSource source={data.conclusionSource} />}
         </div>
 
         <div className="lg:col-span-2 bg-zinc-900 border border-zinc-800 p-8 rounded-3xl">
@@ -148,6 +161,10 @@ export const AnalysisDashboard: React.FC<Props> = ({ data }) => {
               <p className="text-[10px] text-zinc-600 mt-2">Projected Total Cost Gap</p>
             </div>
           </div>
+          
+          <p className="text-sm text-zinc-400 mb-6 font-mono leading-relaxed border-l-2 border-blue-500/30 pl-4">
+            {anonymizeAddress(data.rentVsBuy.justification)}
+          </p>
 
           <div className="w-full h-[250px] mb-8">
             <ResponsiveContainer width="100%" height="100%">
@@ -196,7 +213,7 @@ export const AnalysisDashboard: React.FC<Props> = ({ data }) => {
             {data.amenities.map((item, idx) => (
               <div key={idx} className="flex items-center justify-between p-4 bg-zinc-950 border border-zinc-800 rounded-xl hover:border-zinc-700 transition-colors">
                 <div>
-                  <p className="text-sm font-bold text-zinc-200">{item.name}</p>
+                  <p className="text-sm font-bold text-zinc-200">{anonymizeAddress(item.name)}</p>
                   <p className="text-[10px] text-zinc-500 uppercase font-mono">Status: <span className="text-zinc-300">{item.condition}</span></p>
                 </div>
                 <div className="text-right font-mono">
@@ -224,14 +241,14 @@ export const AnalysisDashboard: React.FC<Props> = ({ data }) => {
                 'bg-zinc-500'
               }`} />
               <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2">
-                <span className="text-xs font-black text-zinc-500 uppercase tracking-tighter">Year {issue.year} · {issue.event}</span>
+                <span className="text-xs font-black text-zinc-500 uppercase tracking-tighter">Year {issue.year} · {anonymizeAddress(issue.event)}</span>
                 <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
                    issue.severity === 'critical' ? 'text-red-400 border-red-900/50' : 'text-zinc-400 border-zinc-800'
                 }`}>Liability: {issue.cost}</span>
               </div>
-              <p className="text-zinc-300 text-sm mb-3 leading-relaxed">{issue.description}</p>
+              <p className="text-zinc-300 text-sm mb-3 leading-relaxed">{anonymizeAddress(issue.description)}</p>
               <div className="bg-zinc-950 p-3 rounded-lg border border-zinc-800 text-[11px] text-zinc-500 border-l-2 border-l-blue-600/30">
-                <span className="font-bold text-zinc-600 mr-2 uppercase tracking-widest">Forensic Resolution:</span> {issue.resolution}
+                <span className="font-bold text-zinc-600 mr-2 uppercase tracking-widest">Forensic Resolution:</span> {anonymizeAddress(issue.resolution)}
               </div>
             </div>
           ))}
