@@ -47,8 +47,31 @@ const App: React.FC = () => {
       setResults(report);
     } catch (err: any) {
       console.error("Analysis Failed:", err);
-      // Ensure error state is always a string to avoid [object Object] rendering
-      const errorMsg = typeof err === 'string' ? err : err.message || JSON.stringify(err);
+      
+      let errorMsg = "An unexpected error occurred during analysis.";
+      
+      if (typeof err === 'string') {
+        errorMsg = err;
+      } else if (err.message) {
+        // Handle the specific RPC 500/6 errors user reported
+        if (err.message.includes('Rpc failed') || err.message.includes('500')) {
+          errorMsg = "The AI server is currently overwhelmed or the documents are too complex. Please try again or analyze fewer documents at once.";
+        } else {
+          errorMsg = err.message;
+        }
+      } else {
+        try {
+          const stringified = JSON.stringify(err);
+          if (stringified.includes('Rpc failed')) {
+            errorMsg = "Forensic Timeout: The AI encountered a server-side limit. Try reducing the number of documents and re-running the scan.";
+          } else {
+            errorMsg = stringified;
+          }
+        } catch (e) {
+          errorMsg = "A critical communication error occurred. Check your connection.";
+        }
+      }
+      
       setError(errorMsg);
     } finally {
       setIsAnalyzing(false);
@@ -58,6 +81,7 @@ const App: React.FC = () => {
   const reset = () => {
     setResults(null);
     setFiles([]);
+    setError(null);
   };
 
   return (
@@ -120,7 +144,6 @@ const App: React.FC = () => {
 
                 {persona === 'occupier' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-6 animate-in fade-in slide-in-from-left-2 duration-300">
-                    {/* Row 1 */}
                     <div>
                       <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Sleeping Habits</label>
                       <select className="w-full bg-zinc-950 border border-zinc-800 rounded-lg h-[50px] px-3 text-zinc-200 focus:border-blue-500 outline-none" value={lifestyle.occupier?.sleepingHabits} onChange={e => setLifestyle({...lifestyle, occupier: {...lifestyle.occupier!, sleepingHabits: e.target.value}})}>
@@ -133,8 +156,6 @@ const App: React.FC = () => {
                       <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Soundproofing Needs</label>
                       <input className="w-full bg-zinc-950 border border-zinc-800 rounded-lg h-[50px] px-3 text-zinc-200 focus:border-blue-500 outline-none" placeholder="e.g. Planning to replace floorboards" value={lifestyle.occupier?.soundproofingNeeds} onChange={e => setLifestyle({...lifestyle, occupier: {...lifestyle.occupier!, soundproofingNeeds: e.target.value}})} />
                     </div>
-
-                    {/* Row 2 */}
                     <div>
                       <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Pets</label>
                       <input className="w-full bg-zinc-950 border border-zinc-800 rounded-lg h-[50px] px-3 text-zinc-200 focus:border-blue-500 outline-none" placeholder="e.g. Medium dog, 15kg" value={lifestyle.occupier?.pets} onChange={e => setLifestyle({...lifestyle, occupier: {...lifestyle.occupier!, pets: e.target.value}})} />
@@ -146,8 +167,6 @@ const App: React.FC = () => {
                         <input type="checkbox" className="w-5 h-5 rounded border-zinc-800 text-blue-600 focus:ring-0 focus:ring-offset-0" checked={lifestyle.occupier?.balconyDrying} onChange={e => setLifestyle({...lifestyle, occupier: {...lifestyle.occupier!, balconyDrying: e.target.checked}})} />
                       </div>
                     </div>
-
-                    {/* Row 3 */}
                     <div>
                       <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Hobbies / Noise</label>
                       <input className="w-full bg-zinc-950 border border-zinc-800 rounded-lg h-[50px] px-3 text-zinc-200 focus:border-blue-500 outline-none" placeholder="e.g. Piano practice, Home workshop" value={lifestyle.occupier?.hobbies} onChange={e => setLifestyle({...lifestyle, occupier: {...lifestyle.occupier!, hobbies: e.target.value}})} />
@@ -173,9 +192,6 @@ const App: React.FC = () => {
                         <div>
                           <label className="block text-[10px] font-bold text-zinc-500 uppercase mb-2 tracking-widest">Interest Rate (%)</label>
                           <input type="number" step="0.1" className="w-full bg-zinc-950 border border-zinc-800 rounded-lg h-[50px] px-3 text-zinc-200 outline-none focus:border-blue-500" value={lifestyle.occupier?.interestRate} onChange={e => setLifestyle({...lifestyle, occupier: {...lifestyle.occupier!, interestRate: e.target.value}})} />
-                        </div>
-                        <div className="col-span-full pt-2">
-                           <p className="text-[10px] text-zinc-500 italic">Enabling "Rent vs Buy" Forensic Comparison for the next 10 years.</p>
                         </div>
                       </div>
                     )}
@@ -222,7 +238,18 @@ const App: React.FC = () => {
                 )}
               </div>
 
-              {error && <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-xl text-red-500 text-sm flex items-center space-x-2"><ICONS.Alert /> <span>{error}</span></div>}
+              {error && (
+                <div className="p-4 bg-red-500/10 border border-red-500/50 rounded-xl text-red-500 text-sm flex items-start space-x-3 animate-in fade-in slide-in-from-top-2">
+                  <div className="pt-0.5"><ICONS.Alert /></div>
+                  <div className="flex-1">
+                    <p className="font-bold mb-1">Audit Failure</p>
+                    <p className="text-zinc-400 leading-relaxed">{error}</p>
+                    <button onClick={handleStartAnalysis} className="mt-3 text-xs font-black uppercase tracking-widest text-white bg-red-500/20 px-3 py-1.5 rounded-lg border border-red-500/30 hover:bg-red-500/40 transition-colors">
+                      Retry Forensic Scan
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <button
                 onClick={handleStartAnalysis}
@@ -241,7 +268,7 @@ const App: React.FC = () => {
             </section>
           </div>
         ) : (
-          <AnalysisDashboard data={results} />
+          <AnalysisDashboard data={results} persona={persona} />
         )}
       </main>
     </div>

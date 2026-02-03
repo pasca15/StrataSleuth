@@ -72,6 +72,19 @@ export interface RentVsBuyComparison {
   yearlyProjection: RentVsBuyYearly[];
 }
 
+export interface WealthYearly {
+  year: number;
+  netCashFlow: number;
+  equityGrowth: number;
+}
+
+export interface InvestorWealth {
+  totalTenYearWealth: number;
+  averageAnnualYield: number;
+  yearlyWealth: WealthYearly[];
+  justification: string;
+}
+
 export interface DetectedAmenity {
   name: string;
   condition: string;
@@ -96,6 +109,7 @@ export interface AnalysisResult {
     justification: string;
   };
   rentVsBuy?: RentVsBuyComparison;
+  investorWealth?: InvestorWealth;
   conclusion: string;
   conclusionSource?: Citation;
 }

@@ -1,13 +1,14 @@
 
 import React from 'react';
-import { AnalysisResult, BriefingPoint, Citation } from '../types';
+import { AnalysisResult, BriefingPoint, Citation, Persona } from '../types';
 import { ICONS, anonymizeAddress } from '../constants';
 import { 
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Legend
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Legend, LineChart, Line
 } from 'recharts';
 
 interface Props {
   data: AnalysisResult;
+  persona: Persona;
 }
 
 const TooltipSource: React.FC<{ source: Citation }> = ({ source }) => (
@@ -42,7 +43,7 @@ const BriefingPointItem: React.FC<{ point: BriefingPoint }> = ({ point }) => {
   );
 };
 
-export const AnalysisDashboard: React.FC<Props> = ({ data }) => {
+export const AnalysisDashboard: React.FC<Props> = ({ data, persona }) => {
   const getRiskColor = (score: number) => {
     if (score > 7.5) return 'text-red-500';
     if (score > 4) return 'text-orange-400';
@@ -124,8 +125,8 @@ export const AnalysisDashboard: React.FC<Props> = ({ data }) => {
         </div>
       )}
 
-      {/* Rent vs Buy Forensic for Occupiers */}
-      {data.rentVsBuy && (
+      {/* Conditional Financial Chart based on Persona */}
+      {persona === 'occupier' && data.rentVsBuy && (
         <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl">
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
             <div className="flex items-center space-x-2">
@@ -166,7 +167,7 @@ export const AnalysisDashboard: React.FC<Props> = ({ data }) => {
             {anonymizeAddress(data.rentVsBuy.justification)}
           </p>
 
-          <div className="w-full h-[250px] mb-8">
+          <div className="w-full h-[300px] mb-8">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data.rentVsBuy.yearlyProjection}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
@@ -176,6 +177,56 @@ export const AnalysisDashboard: React.FC<Props> = ({ data }) => {
                 <Legend verticalAlign="top" height={36} iconType="circle" />
                 <Area type="monotone" dataKey="ownershipCost" stroke="#ffffff" fill="#ffffff05" name="Cumulative Ownership Cost" />
                 <Area type="monotone" dataKey="estimatedRent" stroke="#3b82f6" fill="#3b82f611" name="Cumulative Rent Cost" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {persona === 'investor' && data.investorWealth && (
+        <div className="bg-zinc-900 border border-zinc-800 p-8 rounded-3xl">
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 bg-emerald-500/10 text-emerald-500 rounded-lg"><ICONS.TrendingUp /></div>
+              <h3 className="font-black text-xl text-zinc-200">10-Year Wealth Trajectory</h3>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 text-center md:text-left">
+            <div className="p-6 bg-zinc-950 border border-zinc-800 rounded-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-3 opacity-10"><ICONS.DollarSign /></div>
+              <p className="text-[10px] text-zinc-500 font-bold uppercase mb-2">10-Year Total Wealth Contribution</p>
+              <p className="text-3xl font-black text-emerald-400">${data.investorWealth.totalTenYearWealth.toLocaleString()}</p>
+              <p className="text-[10px] text-zinc-600 mt-2">Cash Flow + Equity Growth</p>
+            </div>
+            <div className="p-6 bg-zinc-950 border border-zinc-800 rounded-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-3 opacity-10"><ICONS.TrendingUp /></div>
+              <p className="text-[10px] text-zinc-500 font-bold uppercase mb-2">Avg. Annual Net Yield (Forensic)</p>
+              <p className="text-3xl font-black text-white">{data.investorWealth.averageAnnualYield}%</p>
+              <p className="text-[10px] text-zinc-600 mt-2">Accounting for Levies & Vacancy</p>
+            </div>
+          </div>
+          
+          <p className="text-sm text-zinc-400 mb-6 font-mono leading-relaxed border-l-2 border-emerald-500/30 pl-4">
+            {anonymizeAddress(data.investorWealth.justification)}
+          </p>
+
+          <div className="w-full h-[350px] mb-8">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data.investorWealth.yearlyWealth}>
+                <defs>
+                  <linearGradient id="colorEquity" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                <XAxis dataKey="year" stroke="#4b5563" fontSize={11} tickFormatter={v => `Year ${v}`} tickLine={false} axisLine={false} />
+                <YAxis stroke="#4b5563" fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip contentStyle={{ backgroundColor: '#18181b', borderRadius: '12px', border: '1px solid #27272a' }} />
+                <Legend verticalAlign="top" height={36} iconType="circle" />
+                <Area type="monotone" dataKey="equityGrowth" stroke="#10b981" fillOpacity={1} fill="url(#colorEquity)" name="Equity Growth (Projected Value - Debt)" />
+                <Area type="monotone" dataKey="netCashFlow" stroke="#3b82f6" fill="#3b82f611" name="Net Accumulated Cash Flow" />
               </AreaChart>
             </ResponsiveContainer>
           </div>

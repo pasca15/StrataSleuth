@@ -13,12 +13,17 @@ PERSONA-BASED ANALYSIS:
    - Analyze yield erosion. Calculate how strata levy increases impact Net Rental Yield.
    - Forecast cashflow based on loan size/interest rate.
    - **Recommended Rent**: Calculate weekly rent based on yield and market.
+   - **Wealth Trajectory**: Calculate 10-year wealth projection. 
+     - 'netCashFlow': Accumulated (Rent - (Strata + Rates + Maintenance + Mortgage Interest)). 
+     - 'equityGrowth': Estimated Property appreciation (assume a conservative 3-4% p.a.) minus remaining mortgage balance.
+   - DO NOT return 'rentVsBuy' for investors. Return 'investorWealth' instead.
 
 2. **If Persona is 'Occupier'**:
    - **Sleeping Habits**: If user is a 'light sleeper', cross-reference minutes for complaints about: common wall noise, elevator machinery, garbage truck collection times, or noisy neighbors.
    - **Rent vs Buy Forensic**: If there's a mortgage, calculate the "Total Monthly Burn" (Mortgage P&I + Strata + Rates + Maintenance). 
    - Compare this burn rate to local rental prices. Use the 'googleSearch' tool to find real-time rental comparables for this building or street.
    - Calculate if renting a similar property for 10 years is financially superior to the owner's projected costs (including special levies).
+   - DO NOT return 'investorWealth' for occupiers. Return 'rentVsBuy' instead.
 
 CORE DIRECTIVES:
 - **The Ghost in the Walls**: Track recurring structural issues.
@@ -38,7 +43,8 @@ Format:
   "financialWarGaming": [{ "year": number, "expectedCost": number, "fundBalance": number, "levyImpact": number, "yieldImpact": number, "totalMonthlyOwnershipCost": number }],
   "amenities": [{ "name": string, "condition": string, "forecastedMaintenanceYear": number, "estimatedCost": string }],
   "recommendedRent": { "weekly": number, "annual": number, "justification": string },
-  "rentVsBuy": { "monthlyOwnershipCost": number, "marketRentEquivalent": number, "tenYearTotalDelta": number, "comparablePropertyLink": string, "justification": string },
+  "rentVsBuy": { "monthlyOwnershipCost": number, "marketRentEquivalent": number, "tenYearTotalDelta": number, "comparablePropertyLink": string, "justification": string, "yearlyProjection": [...] },
+  "investorWealth": { "totalTenYearWealth": number, "averageAnnualYield": number, "yearlyWealth": [{ "year": number, "netCashFlow": number, "equityGrowth": number }], "justification": string },
   "conclusion": string,
   "conclusionSource": { "fileName": string, "pageNumber": string }
 }
