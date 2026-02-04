@@ -5,7 +5,7 @@
   <h3>The AI Conveyancer for the Weekend Buyer</h3>
 
   <p>
-    <strong>Turn dense 300-page strata reports into a 10-year financial forecast in seconds.</strong>
+    <strong>Turn dense 1,000-page strata reports into a 10-year financial forecast in seconds.</strong>
   </p>
 
   <p>
