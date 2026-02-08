@@ -37,19 +37,86 @@ OUTPUT RULES:
 Format:
 {
   "riskScore": number,
-  "redTeamSummary": [{ "content": string, "source": { "fileName": string, "pageNumber": number } }],
-  "timeline": [{ "year": number, "event": string, "cost": string, "severity": "low"|"medium"|"high"|"critical", "description": string, "resolution": string }],
-  "lifestyleConflicts": [{ "bylaw": string, "conflict": string, "recommendation": string }],
-  "financialWarGaming": [{ "year": number, "expectedCost": number, "fundBalance": number, "levyImpact": number, "yieldImpact": number, "totalMonthlyOwnershipCost": number }],
-  "amenities": [{ "name": string, "condition": string, "forecastedMaintenanceYear": number, "estimatedCost": string }],
-  "recommendedRent": { "weekly": number, "annual": number, "justification": string },
-  "rentVsBuy": { "monthlyOwnershipCost": number, "marketRentEquivalent": number, "tenYearTotalDelta": number, "comparablePropertyLink": string, "justification": string, "yearlyProjection": [...] },
-  "investorWealth": { "totalTenYearWealth": number, "averageAnnualYield": number, "yearlyWealth": [{ "year": number, "netCashFlow": number, "equityGrowth": number }], "justification": string },
-  "conclusion": string,
-  "conclusionSource": { "fileName": string, "pageNumber": string }
+  "redTeamSummary": [
+    { 
+      "content": "string", 
+      "source": { "fileName": "string", "pageNumber": "string" } 
+    }
+  ],
+  "timeline": [
+    { 
+      "year": number, 
+      "event": "string", 
+      "cost": "string", 
+      "severity": "low"|"medium"|"high"|"critical", 
+      "description": "string", 
+      "resolution": "string" 
+    }
+  ],
+  "lifestyleConflicts": [
+    { "bylaw": "string", "conflict": "string", "recommendation": "string" }
+  ],
+  "financialWarGaming": [
+    { 
+      "year": number, 
+      "expectedCost": number, 
+      "fundBalance": number, 
+      "levyImpact": number, 
+      "yieldImpactBestCase": number, 
+      "yieldImpactWorstCase": number,
+      "totalMonthlyOwnershipCost": number 
+    }
+  ],
+  "amenities": [
+    { 
+      "name": "string", 
+      "condition": "string", 
+      "forecastedMaintenanceYear": number, 
+      "estimatedCost": "string" 
+    }
+  ],
+  "recommendedRent": { 
+    "weekly": number, 
+    "annual": number, 
+    "justification": "string" 
+  },
+  "rentVsBuy": { 
+    "monthlyOwnershipCost": number, 
+    "marketRentEquivalent": number, 
+    "tenYearTotalDelta": number, 
+    "comparablePropertyLink": "string", 
+    "justification": "string", 
+    "yearlyProjection": [
+      { "year": number, "ownershipCost": number, "estimatedRent": number }
+    ] 
+  },
+  "investorWealth": { 
+    "totalTenYearWealth": number, 
+    "averageAnnualYield": number, 
+    "yearlyWealth": [
+      { "year": number, "netCashFlow": number, "equityGrowth": number }
+    ], 
+    "justification": "string" 
+  },
+  "conclusion": "string",
+  "conclusionSource": { "fileName": "string", "pageNumber": "string" }
 }
+
 `;
 
+// {
+//   "riskScore": number,
+//   "redTeamSummary": [{ "content": string, "source": { "fileName": string, "pageNumber": number } }],
+//   "timeline": [{ "year": number, "event": string, "cost": string, "severity": "low"|"medium"|"high"|"critical", "description": string, "resolution": string }],
+//   "lifestyleConflicts": [{ "bylaw": string, "conflict": string, "recommendation": string }],
+//   "financialWarGaming": [{ "year": number, "expectedCost": number, "fundBalance": number, "levyImpact": number, "yieldImpact": number, "totalMonthlyOwnershipCost": number }],
+//   "amenities": [{ "name": string, "condition": string, "forecastedMaintenanceYear": number, "estimatedCost": string }],
+//   "recommendedRent": { "weekly": number, "annual": number, "justification": string },
+//   "rentVsBuy": { "monthlyOwnershipCost": number, "marketRentEquivalent": number, "tenYearTotalDelta": number, "comparablePropertyLink": string, "justification": string, "yearlyProjection": [...] },
+//   "investorWealth": { "totalTenYearWealth": number, "averageAnnualYield": number, "yearlyWealth": [{ "year": number, "netCashFlow": number, "equityGrowth": number }], "justification": string },
+//   "conclusion": string,
+//   "conclusionSource": { "fileName": string, "pageNumber": string }
+// }
 /**
  * Client-side utility to ensure no real addresses leak into the UI.
  */
