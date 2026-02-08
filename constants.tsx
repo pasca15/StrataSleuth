@@ -30,6 +30,13 @@ CORE DIRECTIVES:
 - **Amenity Audit**: Identify building amenities and forecast repair cycles.
 - **SOURCE CITATIONS**: Every claim in 'redTeamSummary' MUST be cited with fileName and pageNumber.
 
+GLOBAL TRANSLATION PROTOCOL (CRITICAL):
+- This tool is built for Australian Strata. If the uploaded documents are from the US (HOA) or UK (Leasehold):
+  - Treat "HOA Dues" or "Common Charges" as "Strata Levies".
+  - Treat "Reserve Fund" as "Capital Works Fund" or "Sinking Fund".
+  - Treat "CC&Rs" or "Bylaws" as "Strata Bylaws".
+  - Convert all currency values to raw numbers (ignore $ symbols) so the math works regardless of currency.
+
 OUTPUT RULES:
 - RESPOND WITH VALID JSON ONLY. NO MARKDOWN.
 - LIMIT: Max 10 items for the timeline.

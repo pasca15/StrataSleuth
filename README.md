@@ -15,7 +15,7 @@
 
   <img src="https://img.shields.io/badge/Powered%20By-Gemini%203%20Pro-4285F4?style=for-the-badge&logo=google" />
   <img src="https://img.shields.io/badge/Mode-Deep%20Think-FF6F00?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Stack-Next.js%20%7C%20Python-black?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Stack-TypeScript%20%7C%20HTML-black?style=for-the-badge" />
 
 </div>
 
