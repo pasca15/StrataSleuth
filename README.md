@@ -1,16 +1,16 @@
 <div align="center">
-   <img src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" alt="StrataSleuth Banner" width="100%" />
+   <!-- <img src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" alt="StrataSleuth Banner" width="100%" /> -->
 
   <h1>StrataSleuth 🕵️‍♂️🏠</h1>
   <h3>The AI Conveyancer for the Weekend Buyer</h3>
 
   <p>
-    <strong>Turn dense 300-page strata reports into a 10-year financial forecast in seconds.</strong>
+    <strong>Turn dense **1,000-page** strata reports into a 10-year financial forecast in seconds.</strong>
   </p>
 
   <p>
-    <a href="https://youtu.be/YOUR_VIDEO_LINK">View Demo Video</a> •
-    <a href="https://ai.studio/apps/drive/1FfqsURAst8mrB5JWXx3FDUL4saYMWNXy">Try it in AI Studio</a>
+    <a href="https://youtu.be/yLmPp6Nfryk">View Demo Video</a> •
+    <a href="https://stratasleuth-forensic-property-detective-295047179010.us-west1.run.app/">Try it in AI Studio</a>
   </p>
 
   <img src="https://img.shields.io/badge/Powered%20By-Gemini%203%20Pro-4285F4?style=for-the-badge&logo=google" />
